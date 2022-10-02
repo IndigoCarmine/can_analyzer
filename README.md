@@ -1,6 +1,6 @@
 # can_analyzer
 
-A new Flutter project.
+[yskhara/usbcan](https://github.com/yskhara/usbcan)をAndroidで利用するためのAppです。未完成です。
 
 ## Getting Started
 
