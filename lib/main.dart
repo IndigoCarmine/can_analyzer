@@ -1,8 +1,7 @@
-import 'dart:convert';
 
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:usb_serial/usb_serial.dart';
+import 'usbcan.dart';
 
 void main() {
   runApp(const MyApp());
@@ -19,29 +18,23 @@ class MyApp extends StatelessWidget {
       theme: ThemeData(
         primarySwatch: Colors.blue,
       ),
-      home: const MyHomePage(title: 'Flutter Demo Home Page'),
+      home: MyHomePage(title: 'Flutter Demo Home Page', usbCan: UsbCan()),
     );
   }
 }
 
 class MyHomePage extends StatefulWidget {
-  const MyHomePage({super.key, required this.title});
+
+  const MyHomePage({super.key, required this.title,required this.usbCan});
 
   final String title;
-
+  final UsbCan usbCan;
   @override
   State<MyHomePage> createState() => _MyHomePageState();
 }
 
 class _MyHomePageState extends State<MyHomePage> {
-  UsbDevice? device;
-  void checkPort() async {
-    List<UsbDevice> devices = await UsbSerial.listDevices();
-    for (var element in devices) {
-      if (element.manufacturerName == "STMicroelectronics") device = element;
-    }
-    setState(() {});
-  }
+
 
   @override
   Widget build(BuildContext context) {
@@ -53,7 +46,7 @@ class _MyHomePageState extends State<MyHomePage> {
         child: Column(
           children: [
             Builder(builder: (builder) {
-              UsbDevice? deviceNow = device;
+              UsbDevice? deviceNow = widget.usbCan.device;
               if (deviceNow == null) {
                 return const Text("NOT");
               } else {
@@ -67,34 +60,13 @@ class _MyHomePageState extends State<MyHomePage> {
                 );
               }
             }),
-            TextField(),
+            StreamBuilder(stream: widget.usbCan.usbStream(),  builder: (context, snapshot){return Text(snapshot.hasData ? snapshot.data??"":"");},
+            )
+            ,
             TextButton(
               child: const Text("Send"),
               onPressed: () async {
-                UsbPort? port;
-                if (device != null && device!.port != null) {
-                  port = await device!.create();
-                } else {
-                  return;
-                }
-                if (!(await port!.open())) return;
-                await port.setDTR(true);
-                await port.setRTS(true);
-
-                port.setPortParameters(38400, UsbPort.DATABITS_8,
-                    UsbPort.STOPBITS_1, UsbPort.PARITY_NONE);
-
-                var asciien = const AsciiEncoder();
-                // print first result and close port.
-                port.inputStream!.listen(
-                  (Uint8List data) {
-                    var asciide = const AsciiDecoder();
-                    ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-                      content: Text(asciide.convert(data)),
-                    ));
-                  },
-                );
-                await port.write(asciien.convert("TEST"));
+                widget.usbCan.send("AAA\r");
               },
             )
           ],
@@ -102,10 +74,11 @@ class _MyHomePageState extends State<MyHomePage> {
       ),
 
       floatingActionButton: FloatingActionButton(
-        onPressed: checkPort,
+        onPressed: widget.usbCan.connectUSB,
         tooltip: 'Increment',
         child: const Icon(Icons.add),
       ), // This trailing comma makes auto-formatting nicer for build methods.
     );
+
   }
 }
