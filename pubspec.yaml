@@ -31,7 +31,8 @@ environment:
 dependencies:
   flutter:
     sdk: flutter
-  usb_serial: ^0.3.0
+  libserialport: ^0.3.0+1
+  cobs2: any
 
   # The following adds the Cupertino Icons font to your application.
   # Use with the CupertinoIcons class for iOS style icons.

@@ -1,6 +1,5 @@
-
 import 'package:flutter/material.dart';
-import 'package:usb_serial/usb_serial.dart';
+import 'package:libserialport/libserialport.dart';
 import 'usbcan.dart';
 
 void main() {
@@ -24,8 +23,7 @@ class MyApp extends StatelessWidget {
 }
 
 class MyHomePage extends StatefulWidget {
-
-  const MyHomePage({super.key, required this.title,required this.usbCan});
+  const MyHomePage({super.key, required this.title, required this.usbCan});
 
   final String title;
   final UsbCan usbCan;
@@ -34,8 +32,6 @@ class MyHomePage extends StatefulWidget {
 }
 
 class _MyHomePageState extends State<MyHomePage> {
-
-
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -46,23 +42,26 @@ class _MyHomePageState extends State<MyHomePage> {
         child: Column(
           children: [
             Builder(builder: (builder) {
-              UsbDevice? deviceNow = widget.usbCan.device;
-              if (deviceNow == null) {
+              SerialPort? port = widget.usbCan.port;
+              if (port == null) {
                 return const Text("NOT");
               } else {
                 return Column(
                   children: [
-                    Text(deviceNow.deviceId.toString()),
-                    Text(deviceNow.manufacturerName ?? ""),
-                    Text(deviceNow.productName ?? ""),
-                    Text(deviceNow.serial ?? "")
+                    Text(port.deviceNumber.toString()),
+                    Text(port.manufacturer ?? ""),
+                    Text(port.productName ?? ""),
+                    Text(port.vendorId.toString())
                   ],
                 );
               }
             }),
-            StreamBuilder(stream: widget.usbCan.usbStream(),  builder: (context, snapshot){return Text(snapshot.hasData ? snapshot.data??"":"");},
-            )
-            ,
+            StreamBuilder(
+              stream: widget.usbCan.usbStream(),
+              builder: (context, snapshot) {
+                return Text(snapshot.hasData ? snapshot.data ?? "" : "");
+              },
+            ),
             TextButton(
               child: const Text("Send"),
               onPressed: () async {
@@ -79,6 +78,5 @@ class _MyHomePageState extends State<MyHomePage> {
         child: const Icon(Icons.add),
       ), // This trailing comma makes auto-formatting nicer for build methods.
     );
-
   }
 }

@@ -1,57 +1,61 @@
 import 'dart:convert';
 import 'package:flutter/foundation.dart';
-import 'package:usb_serial/usb_serial.dart';
+import 'package:libserialport/libserialport.dart';
+import 'package:cobs2/cobs2.dart';
 
-class UsbCan{
-  UsbPort? port;
-  UsbDevice? device;
-  Future<bool> connectUSB() async{
+class UsbCan {
+  SerialPort? port;
+  Future<bool> connectUSB() async {
     //Search a usbcan.
-    List<UsbDevice> devices = await UsbSerial.listDevices();
-    UsbDevice? device;
+    List<String> devices = SerialPort.availablePorts;
     for (var element in devices) {
-      if (element.manufacturerName == "STMicroelectronics") device = element;
+      SerialPort port_ = SerialPort(element);
+      if (port_.manufacturer == "STMicroelectronics") {
+        port = port_;
+        break;
+      }
     }
-    if(device==null)return false;
+    if (port == null) return false;
 
-    //set a port.
-    if (device.port != null) {
-      port = await device.create();
-    } else {
-      return false;
-    }
-    if(port == null)return false; 
     //open a port.
-    if (!(await port!.open())) return false;
-    await port!.setDTR(true);
-    await port!.setRTS(true);
+    if (port!.openReadWrite()) return false;
 
-    port!.setPortParameters(115200, UsbPort.DATABITS_8,
-        UsbPort.STOPBITS_1, UsbPort.PARITY_NONE);
     return true;
-
   }
 
-  Future<bool> send(String text) async{
-    var asciien = const AsciiEncoder();
-    if(port ==null)return false;
-    await port!.write(asciien.convert(text));
-      return true;
+  Future<bool> send(String text) async {
+    if (port == null) return false;
+    ByteData encoded = ByteData(64);
+    EncodeResult encodeResult =
+        encodeCOBS(encoded, ByteData.sublistView(ascii.encode(text)));
+    if (encodeResult.status != EncodeStatus.OK) return false;
+    port!.write(encoded.buffer.asUint8List(0, encodeResult.outLen));
+    return true;
   }
-  
+
   //this is stream for receive data.
-  Stream<String> usbStream() async*{
-    if(port==null)connectUSB();
+  Stream<String> usbStream() async* {
+    if (port == null) connectUSB();
     var asciide = const AsciiDecoder();
     Uint8List buffer = Uint8List(0);
-    await for(Uint8List data in port!.inputStream!){
-      for(int i = 0; i < data.length; i++){
-        if(data[i] == '\r'.codeUnitAt(0)){
-          yield asciide.convert(buffer);
+    final reader = SerialPortReader(port!);
+    await for (Uint8List data in reader.stream) {
+      for (int i = 0; i < data.length; i++) {
+        if (data[i] == 0) {
+          ByteData decoded = ByteData(64);
+          DecodeResult decodeResult =
+              decodeCOBS(decoded, ByteData.sublistView(buffer));
+          if (decodeResult.status != DecodeStatus.OK) {
+            buffer = Uint8List(0);
+            continue;
+          }
+          yield asciide
+              .convert(decoded.buffer.asUint8List(0, decodeResult.outLen));
           buffer = Uint8List(0);
+        } else {
+          buffer = Uint8List.fromList(buffer + [data[i]]);
         }
       }
-
     }
   }
 }
