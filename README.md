@@ -1,6 +1,6 @@
 # can_analyzer
 
-[yskhara/usbcan](https://github.com/yskhara/usbcan)をAndroidで利用するためのAppです。未完成です。
+[usbcan](https://github.com/IndigoCarmine/usbcan_fw_v2)をAndroidで利用するためのAppです。未完成です。
 
 ## Getting Started
 
