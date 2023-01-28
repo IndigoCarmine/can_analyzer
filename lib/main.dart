@@ -1,5 +1,6 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
-import 'package:libserialport/libserialport.dart';
+import 'package:flutter_libserialport/flutter_libserialport.dart';
 import 'usbcan.dart';
 
 void main() {
@@ -59,13 +60,19 @@ class _MyHomePageState extends State<MyHomePage> {
             StreamBuilder(
               stream: widget.usbCan.usbStream(),
               builder: (context, snapshot) {
-                return Text(snapshot.hasData ? snapshot.data ?? "" : "");
+                return Text(
+                    snapshot.hasData ? snapshot.data!.data.toString() : "");
               },
             ),
             TextButton(
               child: const Text("Send"),
               onPressed: () async {
-                widget.usbCan.send("AAA\r");
+                widget.usbCan.sendCommand(
+                    Command.establishmentOfCommunication, Uint8List(0));
+                while (!widget.usbCan.connectionEstablished) {
+                  const snackBar = SnackBar(content: Text("Hello!"));
+                  ScaffoldMessenger.of(context).showSnackBar(snackBar);
+                }
               },
             )
           ],
