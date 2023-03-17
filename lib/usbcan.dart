@@ -1,6 +1,7 @@
+import 'dart:async';
 import 'dart:convert';
 import 'package:flutter/foundation.dart';
-import 'package:flutter_libserialport/flutter_libserialport.dart';
+import 'package:usb_serial/usb_serial.dart';
 import 'package:cobs2/cobs2.dart';
 
 class CANFrame {
@@ -33,22 +34,41 @@ class CANFrame {
 enum Command { normal, establishmentOfCommunication }
 
 class UsbCan {
-  SerialPort? port;
+  UsbDevice? device;
   bool connectionEstablished = false;
+  Stream<CANFrame>? _stream;
+  Stream<CANFrame>? get stream {
+    _stream ??= _usbStream();
+
+    return _stream;
+  }
+
   Future<bool> connectUSB() async {
-    //Search a usbcan.
-    List<String> devices = SerialPort.availablePorts;
-    for (var element in devices) {
-      SerialPort port_ = SerialPort(element);
-      if (port_.manufacturer == "STMicroelectronics") {
-        port = port_;
-        break;
+    if (device == null) {
+      //Search a usbcan.
+      List<UsbDevice> devices = await UsbSerial.listDevices();
+      for (var element in devices) {
+        if (element.vid == 0x0483 && element.pid == 0x0409) {
+          device = element;
+          break;
+        }
       }
     }
-    if (port == null) return false;
+
+    if (device == null) {
+      return false;
+    }
+    try {
+      await device!.create();
+    } catch (e) {
+      return false;
+    }
+    if (device!.port == null) return false;
 
     //open a port.
-    if (port!.openReadWrite()) return false;
+    if (!(await device!.port!.open())) return false;
+
+    stream!.listen((event) {});
     return true;
   }
 
@@ -56,12 +76,12 @@ class UsbCan {
     Uint8List sendData = Uint8List(1 + data.length);
     switch (command) {
       case Command.normal:
-        sendData.add(0);
+        sendData[0] = 0 << 4;
         break;
       case Command.establishmentOfCommunication:
-        sendData.add(1);
+        sendData[0] = 1 << 4;
     }
-    sendData.addAll(data);
+    sendData.setRange(1, data.length + 1, data);
     return await _sendUint8List(sendData);
   }
 
@@ -72,15 +92,18 @@ class UsbCan {
 
   //Simply send Uin8list data.
   Future<bool> _sendUint8List(Uint8List data) async {
-    if (port == null) return false;
+    if (device == null || device!.port == null) return false;
     ByteData encoded = ByteData(64);
     EncodeResult encodeResult = encodeCOBS(encoded, ByteData.sublistView(data));
     if (encodeResult.status != EncodeStatus.OK) return false;
-    port!.write(encoded.buffer.asUint8List(0, encodeResult.outLen));
+    device!.port!.write(encoded.buffer.asUint8List(0, encodeResult.outLen));
     return true;
   }
 
-  Stream<CANFrame> usbStream() async* {
+  Stream<CANFrame> _usbStream() async* {
+    while (device == null || device!.port == null) {
+      await Future.delayed(const Duration(milliseconds: 1000));
+    }
     final reader = _usbRawStream();
     await for (Uint8List data in reader) {
       switch (data[0]) {
@@ -96,10 +119,9 @@ class UsbCan {
   //this is stream for receive data.
   //it do COBS.
   Stream<Uint8List> _usbRawStream() async* {
-    if (port == null) await connectUSB();
     Uint8List buffer = Uint8List(0);
-    final reader = SerialPortReader(port!);
-    await for (Uint8List data in reader.stream) {
+    final stream = device!.port!.inputStream;
+    await for (Uint8List data in stream!) {
       for (int i = 0; i < data.length; i++) {
         if (data[i] == 0) {
           ByteData decoded = ByteData(64);

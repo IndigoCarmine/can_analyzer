@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+
+    <!--USBCAN -->
+    <usb-device vendor-id="0483" product-id="0409" />
+
+</resources>

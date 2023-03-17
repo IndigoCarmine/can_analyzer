@@ -1,6 +1,8 @@
+import 'dart:io';
+
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter_libserialport/flutter_libserialport.dart';
+import 'package:usb_serial/usb_serial.dart';
 import 'usbcan.dart';
 
 void main() {
@@ -18,21 +20,21 @@ class MyApp extends StatelessWidget {
       theme: ThemeData(
         primarySwatch: Colors.blue,
       ),
-      home: MyHomePage(title: 'Flutter Demo Home Page', usbCan: UsbCan()),
+      home: const MyHomePage(title: 'Flutter Demo Home Page'),
     );
   }
 }
 
 class MyHomePage extends StatefulWidget {
-  const MyHomePage({super.key, required this.title, required this.usbCan});
+  const MyHomePage({super.key, required this.title});
 
   final String title;
-  final UsbCan usbCan;
   @override
   State<MyHomePage> createState() => _MyHomePageState();
 }
 
 class _MyHomePageState extends State<MyHomePage> {
+  UsbCan usbCan = UsbCan();
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -43,22 +45,22 @@ class _MyHomePageState extends State<MyHomePage> {
         child: Column(
           children: [
             Builder(builder: (builder) {
-              SerialPort? port = widget.usbCan.port;
+              UsbDevice? port = usbCan.device;
               if (port == null) {
                 return const Text("NOT");
               } else {
                 return Column(
                   children: [
-                    Text(port.deviceNumber.toString()),
-                    Text(port.manufacturer ?? ""),
+                    Text(port.deviceId.toString()),
+                    Text(port.manufacturerName ?? ""),
                     Text(port.productName ?? ""),
-                    Text(port.vendorId.toString())
+                    Text(port.vid.toString())
                   ],
                 );
               }
             }),
             StreamBuilder(
-              stream: widget.usbCan.usbStream(),
+              stream: usbCan.stream,
               builder: (context, snapshot) {
                 return Text(
                     snapshot.hasData ? snapshot.data!.data.toString() : "");
@@ -67,10 +69,22 @@ class _MyHomePageState extends State<MyHomePage> {
             TextButton(
               child: const Text("Send"),
               onPressed: () async {
-                widget.usbCan.sendCommand(
+                usbCan.sendCommand(
                     Command.establishmentOfCommunication, Uint8List(0));
-                while (!widget.usbCan.connectionEstablished) {
-                  const snackBar = SnackBar(content: Text("Hello!"));
+                int counter = 0;
+                while (counter < 4) {
+                  if (usbCan.connectionEstablished) {
+                    const snackBar = SnackBar(content: Text("Hello!"));
+                    ScaffoldMessenger.of(context).showSnackBar(snackBar);
+                    return;
+                  }
+                  sleep(const Duration(seconds: 1));
+                  await usbCan.sendCommand(
+                      Command.establishmentOfCommunication, Uint8List(0));
+                  counter++;
+                }
+                const snackBar = SnackBar(content: Text("Can not call back!"));
+                if (mounted) {
                   ScaffoldMessenger.of(context).showSnackBar(snackBar);
                 }
               },
@@ -80,7 +94,16 @@ class _MyHomePageState extends State<MyHomePage> {
       ),
 
       floatingActionButton: FloatingActionButton(
-        onPressed: widget.usbCan.connectUSB,
+        onPressed: () async {
+          if (!(await usbCan.connectUSB())) {
+            if (context.mounted) {
+              ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+                content: Text("USB CAN NOT CONNECTED"),
+              ));
+            }
+          }
+          setState(() {});
+        },
         tooltip: 'Increment',
         child: const Icon(Icons.add),
       ), // This trailing comma makes auto-formatting nicer for build methods.
