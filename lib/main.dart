@@ -1,9 +1,12 @@
+import 'dart:convert';
 import 'dart:io';
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:usb_serial/usb_serial.dart';
 import 'usbcan.dart';
+import 'stream_list_builder.dart';
+import 'test.dart';
 
 void main() {
   runApp(const MyApp());
@@ -20,7 +23,7 @@ class MyApp extends StatelessWidget {
       theme: ThemeData(
         primarySwatch: Colors.blue,
       ),
-      home: const MyHomePage(title: 'Flutter Demo Home Page'),
+      home: const TestPage(title: "Can Analyzer"),
     );
   }
 }
@@ -59,36 +62,40 @@ class _MyHomePageState extends State<MyHomePage> {
                 );
               }
             }),
-            StreamBuilder(
+            TextButton(
+              child: const Text("試験"),
+              onPressed: () async {
+                Uint8List data = const AsciiEncoder().convert("HelloUSBCAN");
+                usbCan.sendCommand(Command.establishmentOfCommunication, data);
+                int counter = 0;
+                while (counter < 4) {
+                  if (usbCan.connectionEstablished) {
+                    const snackBar = SnackBar(
+                        content:
+                            Text("Hello! This is newest version of USBCAN!!"));
+                    ScaffoldMessenger.of(context).showSnackBar(snackBar);
+                    return;
+                  }
+                  await Future.delayed(const Duration(seconds: 1));
+                  usbCan.sendCommand(
+                      Command.establishmentOfCommunication, data);
+                  counter++;
+                }
+                const snackBar =
+                    SnackBar(content: Text("Something went wrong!"));
+                if (mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(snackBar);
+                }
+              },
+            ),
+            StreamListBuilder(
               stream: usbCan.stream,
               builder: (context, snapshot) {
                 return Text(
                     snapshot.hasData ? snapshot.data!.data.toString() : "");
               },
+              maxData: 3,
             ),
-            TextButton(
-              child: const Text("Send"),
-              onPressed: () async {
-                usbCan.sendCommand(
-                    Command.establishmentOfCommunication, Uint8List(0));
-                int counter = 0;
-                while (counter < 4) {
-                  if (usbCan.connectionEstablished) {
-                    const snackBar = SnackBar(content: Text("Hello!"));
-                    ScaffoldMessenger.of(context).showSnackBar(snackBar);
-                    return;
-                  }
-                  sleep(const Duration(seconds: 1));
-                  await usbCan.sendCommand(
-                      Command.establishmentOfCommunication, Uint8List(0));
-                  counter++;
-                }
-                const snackBar = SnackBar(content: Text("Can not call back!"));
-                if (mounted) {
-                  ScaffoldMessenger.of(context).showSnackBar(snackBar);
-                }
-              },
-            )
           ],
         ),
       ),
@@ -98,7 +105,13 @@ class _MyHomePageState extends State<MyHomePage> {
           if (!(await usbCan.connectUSB())) {
             if (context.mounted) {
               ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-                content: Text("USB CAN NOT CONNECTED"),
+                content: Text("USBCAN IS NOT CONNECTED"),
+              ));
+            }
+          } else {
+            if (context.mounted) {
+              ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+                content: Text("USBCAN CONNECTED"),
               ));
             }
           }

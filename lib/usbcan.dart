@@ -1,8 +1,11 @@
 import 'dart:async';
 import 'dart:convert';
-import 'package:flutter/foundation.dart';
+import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:usb_serial/usb_serial.dart';
 import 'package:cobs2/cobs2.dart';
+
+import 'usbcan_widgets.dart';
 
 class CANFrame {
   // ignore: non_constant_identifier_names
@@ -28,6 +31,13 @@ class CANFrame {
     is_extended = ((frame[5] << 1) % 2 == 1);
     is_error = ((frame[5]) % 2 == 1);
     data = frame.sublist(6);
+  }
+  CANFrame.fromIdAndData(this.can_id, this.data,
+      {this.is_rtr = false, this.is_extended = false, this.is_error = false});
+
+  @override
+  String toString() {
+    return 'CANFrame{can_id: $can_id, is_rtr: $is_rtr, is_extended: $is_extended, is_error: $is_error, data: $data}';
   }
 }
 
@@ -64,11 +74,12 @@ class UsbCan {
       return false;
     }
     if (device!.port == null) return false;
+    device!.port!.setPortParameters(
+        115200, UsbPort.DATABITS_8, UsbPort.STOPBITS_1, UsbPort.PARITY_NONE);
 
     //open a port.
     if (!(await device!.port!.open())) return false;
 
-    stream!.listen((event) {});
     return true;
   }
 
@@ -96,7 +107,10 @@ class UsbCan {
     ByteData encoded = ByteData(64);
     EncodeResult encodeResult = encodeCOBS(encoded, ByteData.sublistView(data));
     if (encodeResult.status != EncodeStatus.OK) return false;
-    device!.port!.write(encoded.buffer.asUint8List(0, encodeResult.outLen));
+    Uint8List encodedList = Uint8List(encodeResult.outLen + 1);
+    encodedList.setRange(0, encodeResult.outLen, encoded.buffer.asUint8List());
+    encodedList.last = 0;
+    device!.port!.write(encodedList);
     return true;
   }
 
@@ -106,12 +120,13 @@ class UsbCan {
     }
     final reader = _usbRawStream();
     await for (Uint8List data in reader) {
-      switch (data[0]) {
+      switch (data[0] >> 4) {
         case 0: //normalframe
           yield CANFrame(data);
           break;
         case 1: //establishment sucsess
           connectionEstablished = true;
+          break;
       }
     }
   }
@@ -131,7 +146,7 @@ class UsbCan {
             buffer = Uint8List(0);
             continue;
           }
-          yield buffer;
+          yield decoded.buffer.asUint8List();
           buffer = Uint8List(0);
         } else {
           buffer = Uint8List.fromList(buffer + [data[i]]);
