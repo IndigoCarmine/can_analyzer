@@ -1,43 +1,70 @@
 import 'dart:async';
 import 'dart:convert';
-import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:usb_serial/usb_serial.dart';
 import 'package:cobs2/cobs2.dart';
 
-import 'usbcan_widgets.dart';
-
 class CANFrame {
-  // ignore: non_constant_identifier_names
-  late int can_id;
-  // ignore: non_constant_identifier_names
-  late bool is_rtr;
-  // ignore: non_constant_identifier_names
-  late bool is_extended;
-  // ignore: non_constant_identifier_names
-  late bool is_error;
+  late int canId;
+  late bool isRtr;
+  late bool isExtended;
+  late bool isError;
   late Uint8List data;
   /*                                                                     
-   uint8_t command : if it is normal can frame, it is 0x00.               
+   uint8_t command :( if it is normal can frame, it is 0x00. )<<4 
+                    | (isRtr << 2 | isExtended << 1 | isError)                  
    uint8_t id[4] : can id                                                 
-   uint8_t frame_type :  is_rtr << 2 | is_extended << 1 | is_error        
    uint8_t dlc : data length                                              
    uint8_t data[8] : data                                                 
    */
   CANFrame(Uint8List frame) {
-    can_id =
-        ((frame[1] << 24) + (frame[2] << 16) + (frame[3] << 8) + (frame[4]));
-    is_rtr = ((frame[5] << 2) % 2 == 1);
-    is_extended = ((frame[5] << 1) % 2 == 1);
-    is_error = ((frame[5]) % 2 == 1);
+    isRtr = (frame[0] & 0x04) != 0;
+    isExtended = (frame[0] & 0x02) != 0;
+    isError = (frame[0] & 0x01) != 0;
+    canId = (frame[1] << 24) | (frame[2] << 16) | (frame[3] << 8) | frame[4];
+    //frame[5] is dlc.
     data = frame.sublist(6);
   }
-  CANFrame.fromIdAndData(this.can_id, this.data,
-      {this.is_rtr = false, this.is_extended = false, this.is_error = false});
+
+  Uint8List toUint8List() {
+    Uint8List frame = Uint8List(6 + data.length);
+    frame[0] = (isRtr ? 0x04 : 0x00) |
+        (isExtended ? 0x02 : 0x00) |
+        (isError ? 0x01 : 0x00);
+    frame[1] = (canId >> 24) & 0xFF;
+    frame[2] = (canId >> 16) & 0xFF;
+    frame[3] = (canId >> 8) & 0xFF;
+    frame[4] = canId & 0xFF;
+    frame[5] = data.length;
+    frame.setRange(6, 6 + data.length, data);
+    return frame;
+  }
+
+  CANFrame.fromIdAndData(this.canId, this.data,
+      {this.isRtr = false, this.isExtended = false, this.isError = false});
 
   @override
   String toString() {
-    return 'CANFrame{can_id: $can_id, is_rtr: $is_rtr, is_extended: $is_extended, is_error: $is_error, data: $data}';
+    return 'CANFrame{canId: $canId, isRtr: $isRtr, isExtended: $isExtended, isError: $isError, data: $data}';
+  }
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is CANFrame &&
+          canId == other.canId &&
+          isRtr == other.isRtr &&
+          isExtended == other.isExtended &&
+          isError == other.isError &&
+          data == other.data;
+
+  @override
+  int get hashCode {
+    return canId.hashCode ^
+        isRtr.hashCode ^
+        isExtended.hashCode ^
+        isError.hashCode ^
+        data.hashCode;
   }
 }
 
@@ -47,10 +74,9 @@ class UsbCan {
   UsbDevice? device;
   bool connectionEstablished = false;
   Stream<CANFrame>? _stream;
-  Stream<CANFrame>? get stream {
-    _stream ??= _usbStream();
-
-    return _stream;
+  Stream<CANFrame> get stream {
+    _stream ??= _usbStream().asBroadcastStream();
+    return _stream!;
   }
 
   Future<bool> connectUSB() async {
@@ -83,10 +109,15 @@ class UsbCan {
     return true;
   }
 
+  Future<bool> sendFrame(CANFrame frame) async {
+    return await _sendUint8List(frame.toUint8List());
+  }
+
   Future<bool> sendCommand(Command command, Uint8List data) async {
-    Uint8List sendData = Uint8List(1 + data.length);
+    Uint8List sendData = Uint8List(data.length + 1);
     switch (command) {
       case Command.normal:
+        assert(false, "[deprecated] Use sendFrame instead.");
         sendData[0] = 0 << 4;
         break;
       case Command.establishmentOfCommunication:
@@ -102,10 +133,11 @@ class UsbCan {
   }
 
   //Simply send Uin8list data.
-  Future<bool> _sendUint8List(Uint8List data) async {
+  Future<bool> _sendUint8List(Uint8List rawData) async {
     if (device == null || device!.port == null) return false;
     ByteData encoded = ByteData(64);
-    EncodeResult encodeResult = encodeCOBS(encoded, ByteData.sublistView(data));
+    EncodeResult encodeResult =
+        encodeCOBS(encoded, ByteData.sublistView(rawData));
     if (encodeResult.status != EncodeStatus.OK) return false;
     Uint8List encodedList = Uint8List(encodeResult.outLen + 1);
     encodedList.setRange(0, encodeResult.outLen, encoded.buffer.asUint8List());

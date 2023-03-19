@@ -1,7 +1,6 @@
 # can_analyzer
 
-[usbcan](https://github.com/IndigoCarmine/usbcan_fw_v2)をAndroidで利用するためのAppです。未完成です。
-
+[usbcan](https://github.com/IndigoCarmine/usbcan_fw_v2)をAndroidで利用するためのAppです。
 ## Getting Started
 
 This project is a starting point for a Flutter application.

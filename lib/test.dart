@@ -1,7 +1,10 @@
+import 'dart:async';
+import 'dart:typed_data';
+
+import 'package:can_analyzer/stream_list_builder.dart';
 import 'package:flutter/material.dart';
 import 'usbcan.dart';
-import 'usbcan_widgets.dart';
-import 'stream_list_builder.dart';
+import 'widgets.dart';
 
 class TestPage extends StatefulWidget {
   const TestPage({super.key, required this.title});
@@ -11,13 +14,17 @@ class TestPage extends StatefulWidget {
 }
 
 class _TestPageState extends State<TestPage> {
-  Stream<int> testStream() async* {
+  Stream<CANFrame> testStream() async* {
     int counter = 0;
     while (true) {
-      await Future.delayed(const Duration(milliseconds: 100));
-      yield counter++;
+      await Future.delayed(const Duration(milliseconds: 1000));
+      yield CANFrame.fromIdAndData(counter, Uint8List(0));
+      counter++;
     }
   }
+
+  UsbCanFormStyle usbcanStyle = UsbCanFormStyle.simple;
+  StreamController<CANFrame> streamController = StreamController<CANFrame>();
 
   @override
   Widget build(BuildContext context) {
@@ -25,11 +32,42 @@ class _TestPageState extends State<TestPage> {
         appBar: AppBar(
           title: Text(widget.title),
         ),
-        body: UsbCanForm(
-          onSendButtonPressed: (CANFrame frame) {
-            print(frame);
-          },
-          style: UsbCanFormStyle.simple,
+        body: Container(
+          padding: const EdgeInsets.all(20),
+          child: Column(
+            children: [
+              UsbCanForm(
+                onSendButtonPressed: (CANFrame frame) {
+                  streamController.add(frame);
+                },
+                style: usbcanStyle,
+              ),
+              Row(
+                children: [
+                  const Text("Use detailed form"),
+                  const SizedBox(width: 20),
+                  Checkbox(
+                      value: usbcanStyle == UsbCanFormStyle.all,
+                      onChanged: (value) {
+                        setState(() {
+                          usbcanStyle = value ?? false
+                              ? UsbCanFormStyle.all
+                              : UsbCanFormStyle.simple;
+                        });
+                      }),
+                ],
+              ),
+              Expanded(
+                child: Container(
+                  alignment: Alignment.topCenter,
+                  child: StreamListBuilder(
+                      max: 5,
+                      builder: (context, data) => CanFrameTile(frame: data),
+                      stream: testStream()),
+                ),
+              ),
+            ],
+          ),
         ));
   }
 }

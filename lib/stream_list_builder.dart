@@ -1,98 +1,117 @@
+import 'dart:async';
 import 'dart:collection';
 
 import 'package:flutter/material.dart';
 
-class StreamListBuilder<T> extends StreamBuilderBase<T, AsyncSnapshot<T>> {
-  StreamListBuilder({
-    this.maxData = 10,
+class StreamListBuilder<T> extends StatefulWidget {
+  const StreamListBuilder({
     super.key,
+    this.max = 10,
     this.initialData,
-    super.stream,
+    required this.stream,
     required this.builder,
-    this.isAnimated = true,
+    this.isEqual,
   });
 
-  /// The build strategy currently used by this builder.
-  ///
-  /// This builder must only return a widget and should not have any side
-  /// effects as it may be called multiple times.
-  final AsyncWidgetBuilder<T> builder;
+  final Stream<T>? stream;
 
-  /// The data that will be used to create the initial snapshot.
-  ///
-  /// Providing this value (presumably obtained synchronously somehow when the
-  /// [Stream] was created) ensures that the first frame will show useful data.
-  /// Otherwise, the first frame will be built with the value null, regardless
-  /// of whether a value is available on the stream: since streams are
-  /// asynchronous, no events from the stream can be obtained before the initial
-  /// build.
+  final Widget? Function(BuildContext context, T data) builder;
+
+  //if you set this, the list will only show the latest data
+  final bool Function(T previous, T next)? isEqual;
+
   final T? initialData;
 
-  final int maxData;
+  final int max;
 
-  final bool isAnimated;
-
-  Queue<Widget> recentData = Queue();
-
-  @override
   AsyncSnapshot<T> initial() => initialData == null
       ? AsyncSnapshot<T>.nothing()
       : AsyncSnapshot<T>.withData(ConnectionState.none, initialData as T);
 
-  @override
   AsyncSnapshot<T> afterConnected(AsyncSnapshot<T> current) =>
       current.inState(ConnectionState.waiting);
 
-  @override
   AsyncSnapshot<T> afterData(AsyncSnapshot<T> current, T data) {
     return AsyncSnapshot<T>.withData(ConnectionState.active, data);
   }
 
-  @override
   AsyncSnapshot<T> afterError(
       AsyncSnapshot<T> current, Object error, StackTrace stackTrace) {
     return AsyncSnapshot<T>.withError(
         ConnectionState.active, error, stackTrace);
   }
 
-  @override
   AsyncSnapshot<T> afterDone(AsyncSnapshot<T> current) =>
       current.inState(ConnectionState.done);
 
-  @override
   AsyncSnapshot<T> afterDisconnected(AsyncSnapshot<T> current) =>
       current.inState(ConnectionState.none);
 
   @override
-  Widget build(BuildContext context, AsyncSnapshot<T> currentSummary) {
-    recentData.addFirst(builder(context, currentSummary));
-    if (recentData.length > maxData) {
+  State<StreamListBuilder<T>> createState() => _StreamListBuilderState<T>();
+}
+
+/// State for [StreamListBuilder].
+class _StreamListBuilderState<T> extends State<StreamListBuilder<T>> {
+  Queue<T> recentData = Queue();
+  StreamSubscription<T>? _subscription;
+
+  @override
+  void initState() {
+    super.initState();
+    _subscribe();
+  }
+
+  @override
+  void didUpdateWidget(StreamListBuilder<T> oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.stream != widget.stream) {
+      if (_subscription != null) {
+        _unsubscribe();
+      }
+      _subscribe();
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    //remove old data++
+    if (recentData.length > widget.max) {
       recentData.removeLast();
     }
-    if (isAnimated) {
-      List<Widget> children = recentData.toList();
+    return ListView(
+        shrinkWrap: true,
+        children: recentData
+            .map((element) => widget.builder(context, element))
+            .whereType<Widget>()
+            .toList());
+  }
 
-      return ListView.builder(
-        itemCount: children.length,
-        shrinkWrap: true,
-        itemBuilder: (context, index) {
-          if (index < maxData - 1) {
-            return children[index];
-          } else {
-            return AnimatedContainer(
-              duration: const Duration(seconds: 1),
-              width: 10,
-              child: children.last,
-            );
+  @override
+  void dispose() {
+    _unsubscribe();
+    super.dispose();
+  }
+
+  void _subscribe() {
+    if (widget.stream != null) {
+      _subscription = widget.stream!.listen((T data) {
+        setState(() {
+          final isEqual = widget.isEqual;
+          if (isEqual != null) {
+            recentData = Queue.from(
+                recentData.where((element) => !isEqual(element, data)));
           }
-        },
-      );
-    } else {
-      //no fade animation
-      return ListView(
-        shrinkWrap: true,
-        children: recentData.toList(),
-      );
+          recentData.addFirst(data);
+        });
+      });
+    }
+  }
+
+  void _unsubscribe() {
+    if (_subscription != null) {
+      _subscription!.cancel();
+      _subscription = null;
     }
   }
 }
