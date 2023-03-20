@@ -1,6 +1,7 @@
 import 'package:can_analyzer/connect_page.dart';
 import 'package:can_analyzer/recieve_page.dart';
 import 'package:can_analyzer/send_page.dart';
+import 'package:can_analyzer/tutorial_page.dart';
 import 'package:flutter/material.dart';
 import 'usbcan.dart';
 
@@ -34,11 +35,7 @@ class MyHomePage extends StatefulWidget {
 
 class _MyHomePageState extends State<MyHomePage> {
   UsbCan usbCan = UsbCan();
-  List<Widget> pages = [
-    ConnectPage(usbCan: UsbCan()),
-    SendPage(usbCan: UsbCan()),
-    RecievePage(usbCan: UsbCan()),
-  ];
+  List<Widget> pages = [const TutorialPage()];
   @override
   Widget build(BuildContext context) {
     return DefaultTabController(
@@ -65,9 +62,22 @@ class _MyHomePageState extends State<MyHomePage> {
                 ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
                   content: Text("USBCAN CONNECTED"),
                 ));
+
+                setState(() {
+                  pages = [
+                    ConnectPage(
+                      usbCan: usbCan,
+                    ),
+                    SendPage(
+                      usbCan: usbCan,
+                    ),
+                    RecievePage(
+                      usbCan: usbCan,
+                    )
+                  ];
+                });
               }
             }
-            setState(() {});
           },
           tooltip: 'Increment',
           child: const Icon(Icons.add),

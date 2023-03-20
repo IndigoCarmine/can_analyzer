@@ -23,7 +23,7 @@ class CANFrame {
     isError = (frame[0] & 0x01) != 0;
     canId = (frame[1] << 24) | (frame[2] << 16) | (frame[3] << 8) | frame[4];
     //frame[5] is dlc.
-    data = frame.sublist(6);
+    data = frame.sublist(6, 6 + frame[5]);
   }
 
   Uint8List toUint8List() {
@@ -80,16 +80,22 @@ class UsbCan {
   }
 
   Future<bool> connectUSB() async {
-    if (device == null) {
-      //Search a usbcan.
-      List<UsbDevice> devices = await UsbSerial.listDevices();
-      for (var element in devices) {
-        if (element.vid == 0x0483 && element.pid == 0x0409) {
-          device = element;
-          break;
-        }
+    UsbDevice? newDevice;
+    //Search a usbcan.
+    List<UsbDevice> devices = await UsbSerial.listDevices();
+    for (var element in devices) {
+      if (element.vid == 0x0483 && element.pid == 0x0409) {
+        newDevice = element;
+        break;
       }
     }
+    if (newDevice == null) return false;
+
+    if (device != null && device!.port != null) {
+      await device!.port!.close();
+    }
+
+    device = newDevice;
 
     if (device == null) {
       return false;

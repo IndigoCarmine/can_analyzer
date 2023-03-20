@@ -1,5 +1,5 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
-    package="com.example.can_analyzer">
+    package="crs.can_analyzer">
    <application
         android:label="can_analyzer"
         android:name="${applicationName}"

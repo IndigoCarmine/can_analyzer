@@ -49,6 +49,7 @@ class _ConnectPageState extends State<ConnectPage> {
             child: TextButton(
               child: const Text("Negotiation test"),
               onPressed: () async {
+                // widget.usbCan.connectionEstablished = false;
                 Uint8List data = const AsciiEncoder().convert("HelloUSBCAN");
                 widget.usbCan
                     .sendCommand(Command.establishmentOfCommunication, data);
