@@ -154,7 +154,7 @@ class UsbCan {
 
   Stream<CANFrame> _usbStream() async* {
     while (device == null || device!.port == null) {
-      await Future.delayed(const Duration(milliseconds: 1000));
+      await Future.delayed(const Duration(milliseconds: 100));
     }
     final reader = _usbRawStream();
     await for (Uint8List data in reader) {
@@ -172,22 +172,25 @@ class UsbCan {
   //this is stream for receive data.
   //it do COBS.
   Stream<Uint8List> _usbRawStream() async* {
-    Uint8List buffer = Uint8List(0);
+    List<int> buffer = List.generate(64, (index) => 0);
+    int bufferIndex = 0;
     final stream = device!.port!.inputStream;
     await for (Uint8List data in stream!) {
       for (int i = 0; i < data.length; i++) {
         if (data[i] == 0) {
           ByteData decoded = ByteData(64);
-          DecodeResult decodeResult =
-              decodeCOBS(decoded, ByteData.sublistView(buffer));
+          DecodeResult decodeResult = decodeCOBS(
+              decoded, ByteData.sublistView(Uint8List.fromList(buffer), 0, i));
           if (decodeResult.status != DecodeStatus.OK) {
             buffer = Uint8List(0);
             continue;
           }
           yield decoded.buffer.asUint8List();
-          buffer = Uint8List(0);
+          buffer.setAll(0, List.generate(64, (index) => 0));
+          bufferIndex = 0;
         } else {
-          buffer = Uint8List.fromList(buffer + [data[i]]);
+          buffer[bufferIndex] = data[i];
+          bufferIndex++;
         }
       }
     }

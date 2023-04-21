@@ -1,4 +1,4 @@
-package com.example.can_analyzer
+package crs.can_analyzer
 
 import io.flutter.embedding.android.FlutterActivity
 

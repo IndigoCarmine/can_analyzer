@@ -34,6 +34,7 @@ dependencies:
   usb_serial: any
   cobs2: any
   flutter_sliding_tutorial: any
+  circular_buffer: ^0.11.0
 
   # The following adds the Cupertino Icons font to your application.
   # Use with the CupertinoIcons class for iOS style icons.

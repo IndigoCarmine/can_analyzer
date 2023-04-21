@@ -1,6 +1,6 @@
 import 'dart:async';
 import 'dart:collection';
-
+import 'package:circular_buffer/circular_buffer.dart';
 import 'package:flutter/material.dart';
 
 class StreamListBuilder<T> extends StatefulWidget {
@@ -53,7 +53,7 @@ class StreamListBuilder<T> extends StatefulWidget {
 
 /// State for [StreamListBuilder].
 class _StreamListBuilderState<T> extends State<StreamListBuilder<T>> {
-  Queue<T> recentData = Queue();
+  late CircularBuffer<T> recentData = CircularBuffer<T>(widget.max);
   StreamSubscription<T>? _subscription;
 
   @override
@@ -99,10 +99,17 @@ class _StreamListBuilderState<T> extends State<StreamListBuilder<T>> {
         setState(() {
           final isEqual = widget.isEqual;
           if (isEqual != null) {
-            recentData = Queue.from(
-                recentData.where((element) => !isEqual(element, data)));
+            //check same data,if so, overwrite it
+            if (recentData.isFilled) {
+              for (int i = 0; i < recentData.length; i++) {
+                if (isEqual(recentData[i], data)) {
+                  recentData[i] = data;
+                  return;
+                }
+              }
+            }
           }
-          recentData.addFirst(data);
+          recentData.add(data);
         });
       });
     }
