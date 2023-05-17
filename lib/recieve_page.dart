@@ -20,6 +20,13 @@ class RecievePage extends StatefulWidget {
 class _RecievePageState extends State<RecievePage> {
   bool deleteSameIdFrames = false;
   bool Function(CANFrame, CANFrame)? isSameId;
+  List enabledModes = [
+    CanWidgetMode.hexMode,
+    CanWidgetMode.floatMode,
+    CanWidgetMode.stringMode,
+    CanWidgetMode.uint16Mode,
+  ];
+  CanWidgetMode mode = CanWidgetMode.hexMode;
   @override
   Widget build(BuildContext context) {
     return Container(
@@ -28,6 +35,19 @@ class _RecievePageState extends State<RecievePage> {
         children: [
           Row(
             children: [
+              DropdownMenu(
+                dropdownMenuEntries: enabledModes
+                    .map((e) => DropdownMenuEntry(
+                          label: e.toString(),
+                          value: e,
+                        ))
+                    .toList(),
+                onSelected: (value) {
+                  setState(() {
+                    mode = value as CanWidgetMode;
+                  });
+                },
+              ),
               const Text("delete same id frames"),
               const SizedBox(width: 20),
               Checkbox(
@@ -46,8 +66,8 @@ class _RecievePageState extends State<RecievePage> {
           ),
           StreamListBuilder(
             stream: widget.usbCan.stream,
-            builder: (context, frame) =>
-                SizedBox(height: 60, child: CanFrameTile(frame: frame)),
+            builder: (context, frame) => SizedBox(
+                height: 60, child: CanFrameTile(frame: frame, mode: mode)),
             isEqual: isSameId,
           ),
         ],

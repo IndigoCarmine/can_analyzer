@@ -17,11 +17,11 @@ class UsbCanForm extends StatefulWidget {
       {super.key,
       required this.onSendButtonPressed,
       required this.style,
-      this.enabledModes = HexSwitchFieldMode.values});
+      this.enabledModes = CanWidgetMode.values});
 
   final void Function(CANFrame) onSendButtonPressed;
   final UsbCanFormStyle style;
-  final List<HexSwitchFieldMode> enabledModes;
+  final List<CanWidgetMode> enabledModes;
 
   @override
   State<UsbCanForm> createState() => _UsbCanFormState();
@@ -32,16 +32,27 @@ class _UsbCanFormState extends State<UsbCanForm> {
   Uint8List _data = Uint8List(0);
   bool isRtr = false;
   bool isExtended = false;
+  bool isLittleEndian = false;
 
-  HexSwitchFieldMode mode = HexSwitchFieldMode.hexMode;
+  CanWidgetMode mode = CanWidgetMode.hexMode;
   @override
   Widget build(BuildContext context) {
     if (widget.style == UsbCanFormStyle.simple) {
       isRtr = false;
       isExtended = false;
+      isLittleEndian = false;
       return _mainWidget([]);
     } else {
       return _mainWidget([
+        const Spacer(),
+        const Text("Endian"),
+        Checkbox(
+            value: isLittleEndian,
+            onChanged: (value) {
+              setState(() {
+                isLittleEndian = value ?? false;
+              });
+            }),
         const Spacer(),
         const Text("Rmt"),
         Checkbox(
@@ -74,7 +85,7 @@ class _UsbCanFormState extends State<UsbCanForm> {
               width: 50, child: Text("ID:", style: TextStyle(fontSize: 18))),
           Expanded(
             child: HexSwitchField(
-              mode: HexSwitchFieldMode.hexMode,
+              mode: CanWidgetMode.hexMode,
               onChanged: (value) {
                 _canId = value.fold<int>(
                     0,
@@ -108,22 +119,26 @@ class _UsbCanFormState extends State<UsbCanForm> {
                 padding: const EdgeInsets.all(10),
                 child: DropdownMenu(
                   width: 120,
-                  initialSelection: HexSwitchFieldMode.hexMode,
+                  initialSelection: CanWidgetMode.hexMode,
                   dropdownMenuEntries: widget.enabledModes
                       .map((mode) => DropdownMenuEntry(
                           value: mode, label: mode.name.replaceAll("Mode", "")))
                       .toList(),
                   onSelected: (value) {
                     setState(() {
-                      mode = value ?? HexSwitchFieldMode.hexMode;
+                      mode = value ?? CanWidgetMode.hexMode;
                     });
                   },
                 ),
               ),
               ElevatedButton(
                   onPressed: () {
+                    Uint8List data = _data;
+                    if (isLittleEndian) {
+                      data = Uint8List.fromList(data.reversed.toList());
+                    }
                     widget.onSendButtonPressed(CANFrame.fromIdAndData(
-                        _canId, _data,
+                        _canId, data,
                         isRtr: isRtr, isExtended: isExtended));
                   },
                   child: const Text("Send"))
@@ -133,7 +148,7 @@ class _UsbCanFormState extends State<UsbCanForm> {
   }
 }
 
-enum HexSwitchFieldMode {
+enum CanWidgetMode {
   hexMode,
   stringMode,
   floatMode,
@@ -152,7 +167,7 @@ class HexSwitchField extends StatefulWidget {
       {super.key, required this.onChanged, required this.mode});
 
   final void Function(Uint8List) onChanged;
-  final HexSwitchFieldMode mode;
+  final CanWidgetMode mode;
 
   @override
   State<HexSwitchField> createState() => _HexSwitchFieldState();
@@ -164,7 +179,7 @@ class _HexSwitchFieldState extends State<HexSwitchField> {
   @override
   Widget build(BuildContext context) {
     switch (widget.mode) {
-      case HexSwitchFieldMode.hexMode:
+      case CanWidgetMode.hexMode:
         return TextField(
           onChanged: (value) {
             _data = Uint8List.fromList(value
@@ -221,7 +236,7 @@ class _HexSwitchFieldState extends State<HexSwitchField> {
             })
           ],
         );
-      case HexSwitchFieldMode.stringMode:
+      case CanWidgetMode.stringMode:
         return TextField(
             keyboardType: TextInputType.visiblePassword,
             onChanged: (value) {
@@ -230,7 +245,7 @@ class _HexSwitchFieldState extends State<HexSwitchField> {
             },
             controller: TextEditingController(
                 text: const AsciiDecoder(allowInvalid: true).convert(_data)));
-      case HexSwitchFieldMode.floatMode:
+      case CanWidgetMode.floatMode:
         return TextField(
             keyboardType: TextInputType.number,
             inputFormatters: [
@@ -248,7 +263,7 @@ class _HexSwitchFieldState extends State<HexSwitchField> {
                 text: _data.buffer.asFloat32List().isEmpty
                     ? ""
                     : _data.buffer.asFloat32List().first.toString()));
-      case HexSwitchFieldMode.doubleMode:
+      case CanWidgetMode.doubleMode:
         return TextField(
             keyboardType: TextInputType.number,
             inputFormatters: [
@@ -266,7 +281,7 @@ class _HexSwitchFieldState extends State<HexSwitchField> {
                 text: _data.buffer.asFloat64List().isEmpty
                     ? ""
                     : _data.buffer.asFloat64List().first.toString()));
-      case HexSwitchFieldMode.int16Mode:
+      case CanWidgetMode.int16Mode:
         return TextField(
             keyboardType: TextInputType.number,
             inputFormatters: [
@@ -282,7 +297,7 @@ class _HexSwitchFieldState extends State<HexSwitchField> {
                 text: _data.buffer.asInt16List().isEmpty
                     ? ""
                     : _data.buffer.asInt16List().first.toString()));
-      case HexSwitchFieldMode.int32Mode:
+      case CanWidgetMode.int32Mode:
         return TextField(
             keyboardType: TextInputType.number,
             inputFormatters: [
@@ -298,7 +313,7 @@ class _HexSwitchFieldState extends State<HexSwitchField> {
                 text: _data.buffer.asInt32List().isEmpty
                     ? ""
                     : _data.buffer.asInt32List().first.toString()));
-      case HexSwitchFieldMode.int64Mode:
+      case CanWidgetMode.int64Mode:
         return TextField(
             keyboardType: TextInputType.number,
             inputFormatters: [
@@ -314,7 +329,7 @@ class _HexSwitchFieldState extends State<HexSwitchField> {
                 text: _data.buffer.asInt64List().isEmpty
                     ? ""
                     : _data.buffer.asInt64List().first.toString()));
-      case HexSwitchFieldMode.uint16Mode:
+      case CanWidgetMode.uint16Mode:
         return TextField(
             keyboardType: TextInputType.number,
             inputFormatters: [
@@ -332,7 +347,7 @@ class _HexSwitchFieldState extends State<HexSwitchField> {
                 text: _data.buffer.asUint16List().isEmpty
                     ? ""
                     : _data.buffer.asUint16List().first.toString()));
-      case HexSwitchFieldMode.uint32Mode:
+      case CanWidgetMode.uint32Mode:
         return TextField(
             keyboardType: TextInputType.number,
             inputFormatters: [
@@ -350,7 +365,7 @@ class _HexSwitchFieldState extends State<HexSwitchField> {
                 text: _data.buffer.asUint32List().isEmpty
                     ? ""
                     : _data.buffer.asUint32List().first.toString()));
-      case HexSwitchFieldMode.uint64Mode:
+      case CanWidgetMode.uint64Mode:
         return TextField(
             keyboardType: TextInputType.number,
             inputFormatters: [
@@ -377,15 +392,83 @@ class _HexSwitchFieldState extends State<HexSwitchField> {
 /// A widget that displays a CAN frame in a list tile.
 class CanFrameTile extends StatelessWidget {
   final CANFrame frame;
+  final CanWidgetMode mode;
 
   final void Function(CANFrame)? onFrameTap;
   final void Function(CANFrame)? onFrameLongPress;
 
   const CanFrameTile(
-      {Key? key, required this.frame, this.onFrameTap, this.onFrameLongPress})
+      {Key? key,
+      required this.frame,
+      this.onFrameTap,
+      this.onFrameLongPress,
+      required this.mode})
       : super(key: key);
   @override
   Widget build(BuildContext context) {
+    switch (mode) {
+      case CanWidgetMode.hexMode:
+        return _generateWidget(frame.data
+            .map((e) => e.toRadixString(16).padLeft(2, "0"))
+            .map(
+              (e) => " $e",
+            )
+            .join()
+            .toUpperCase());
+      case CanWidgetMode.int16Mode:
+        return _generateWidget(frame.data.buffer
+            .asInt16List()
+            .map((e) => e.toString())
+            .join()
+            .toUpperCase());
+      case CanWidgetMode.int32Mode:
+        return _generateWidget(frame.data.buffer
+            .asInt32List()
+            .map((e) => e.toString())
+            .join()
+            .toUpperCase());
+      case CanWidgetMode.int64Mode:
+        return _generateWidget(frame.data.buffer
+            .asInt64List()
+            .map((e) => e.toString())
+            .join()
+            .toUpperCase());
+      case CanWidgetMode.uint16Mode:
+        return _generateWidget(frame.data.buffer
+            .asUint16List()
+            .map((e) => e.toString())
+            .join()
+            .toUpperCase());
+      case CanWidgetMode.uint32Mode:
+        return _generateWidget(frame.data.buffer
+            .asUint32List()
+            .map((e) => e.toString())
+            .join()
+            .toUpperCase());
+      case CanWidgetMode.uint64Mode:
+        return _generateWidget(frame.data.buffer
+            .asUint64List()
+            .map((e) => e.toString())
+            .join()
+            .toUpperCase());
+      case CanWidgetMode.stringMode:
+        return _generateWidget(String.fromCharCodes(frame.data));
+      case CanWidgetMode.floatMode:
+        return _generateWidget(frame.data.buffer
+            .asFloat32List()
+            .map((e) => e.toString())
+            .join()
+            .toUpperCase());
+      case CanWidgetMode.doubleMode:
+        return _generateWidget(frame.data.buffer
+            .asFloat64List()
+            .map((e) => e.toString())
+            .join()
+            .toUpperCase());
+    }
+  }
+
+  ListTile _generateWidget(String dataText) {
     Widget leadingIcon = const Icon(Icons.message);
     if (frame.isError) {
       leadingIcon = const Icon(Icons.error);
@@ -398,8 +481,7 @@ class CanFrameTile extends StatelessWidget {
       leading: leadingIcon,
       title: Text("ID : ${frame.canId.toString()}"
           " (0x${frame.canId.toRadixString(16).toUpperCase()})"),
-      subtitle:
-          Text(frame.data.toString() + (frame.isExtended ? " (Extended)" : "")),
+      subtitle: Text(dataText + (frame.isExtended ? " (Extended)" : "")),
       onTap: () => onFrameTap?.call(frame),
       onLongPress: () => onFrameLongPress?.call(frame),
     );

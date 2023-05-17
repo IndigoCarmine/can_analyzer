@@ -62,7 +62,8 @@ class _TestPageState extends State<TestPage> {
                   alignment: Alignment.topCenter,
                   child: StreamListBuilder(
                       max: 5,
-                      builder: (context, data) => CanFrameTile(frame: data),
+                      builder: (context, data) => CanFrameTile(
+                          frame: data, mode: CanWidgetMode.hexMode),
                       stream: testStream()),
                 ),
               ),

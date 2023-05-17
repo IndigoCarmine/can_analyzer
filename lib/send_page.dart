@@ -34,9 +34,9 @@ class _SendPageState extends State<SendPage> {
             },
             style: usbcanStyle,
             enabledModes: const [
-              HexSwitchFieldMode.hexMode,
-              HexSwitchFieldMode.floatMode,
-              HexSwitchFieldMode.stringMode
+              CanWidgetMode.hexMode,
+              CanWidgetMode.floatMode,
+              CanWidgetMode.stringMode
             ],
           ),
           SizedBox(
@@ -81,6 +81,7 @@ class _SendPageState extends State<SendPage> {
                     onFrameTap: (frame) {
                       widget.usbCan.sendFrame(frame);
                     },
+                    mode: CanWidgetMode.hexMode,
                   ),
                 ),
                 stream: streamController.stream,
