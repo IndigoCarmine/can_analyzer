@@ -1,8 +1,9 @@
 import 'dart:async';
 import 'dart:convert';
+import 'dart:io';
 import 'package:flutter/services.dart';
-import 'package:usb_serial/usb_serial.dart';
 import 'package:cobs2/cobs2.dart';
+import 'serial.dart';
 
 class CANFrame {
   late int canId;
@@ -71,7 +72,7 @@ class CANFrame {
 enum Command { normal, establishmentOfCommunication }
 
 class UsbCan {
-  UsbDevice? device;
+  Device? device;
   bool connectionEstablished = false;
   Stream<CANFrame>? _stream;
   Stream<CANFrame> get stream {
@@ -80,13 +81,20 @@ class UsbCan {
   }
 
   Future<bool> connectUSB() async {
-    UsbDevice? newDevice;
+    Device? newDevice;
     //Search a usbcan.
-    List<UsbDevice> devices = await UsbSerial.listDevices();
+    List<Device> devices = await Serial.listDevices();
     for (var element in devices) {
-      if (element.vid == 0x0483 && element.pid == 0x0409) {
-        newDevice = element;
-        break;
+      if (Platform.isAndroid) {
+        if (element.vid == 0x0483 && element.pid == 0x0409) {
+          newDevice = element;
+          break;
+        }
+      } else if (Platform.isWindows) {
+        if (element.vid == 0x0483) {
+          newDevice = element;
+          break;
+        }
       }
     }
     if (newDevice == null) return false;
@@ -94,7 +102,7 @@ class UsbCan {
     if (device != null && device!.port != null) {
       await device!.port!.close();
     }
-
+    print("Connecting to ...");
     device = newDevice;
 
     if (device == null) {
@@ -106,12 +114,13 @@ class UsbCan {
       return false;
     }
     if (device!.port == null) return false;
-    device!.port!.setPortParameters(
-        115200, UsbPort.DATABITS_8, UsbPort.STOPBITS_1, UsbPort.PARITY_NONE);
+    device!.port!.setPortParameters(115200);
 
+    print("Connecting to ...");
     //open a port.
     if (!(await device!.port!.open())) return false;
 
+    print("Connecting to ...");
     return true;
   }
 

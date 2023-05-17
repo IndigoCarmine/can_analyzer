@@ -2,7 +2,7 @@ import 'dart:convert';
 import 'dart:typed_data';
 
 import 'package:flutter/material.dart';
-import 'package:usb_serial/usb_serial.dart';
+import 'serial.dart';
 
 import 'stream_list_builder.dart';
 import 'usbcan.dart';
@@ -26,7 +26,7 @@ class _ConnectPageState extends State<ConnectPage> {
       child: Column(
         children: [
           Builder(builder: (builder) {
-            UsbDevice? port = widget.usbCan.device;
+            Device? port = widget.usbCan.device;
             if (port == null) {
               return const SizedBox(
                   height: 300,
@@ -36,10 +36,8 @@ class _ConnectPageState extends State<ConnectPage> {
             } else {
               return Column(
                 children: [
-                  Text(port.deviceId.toString()),
-                  Text(port.manufacturerName ?? ""),
-                  Text(port.productName ?? ""),
-                  Text(port.vid.toString())
+                  Text(port.vid.toString()),
+                  Text(port.pid.toString())
                 ],
               );
             }
