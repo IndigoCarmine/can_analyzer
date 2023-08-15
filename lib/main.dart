@@ -3,7 +3,7 @@ import 'package:can_analyzer/recieve_page.dart';
 import 'package:can_analyzer/send_page.dart';
 import 'package:can_analyzer/tutorial_page.dart';
 import 'package:flutter/material.dart';
-import 'usbcan.dart';
+import 'package:usbcan_plugins/usbcan.dart';
 
 void main() {
   runApp(const MyApp());

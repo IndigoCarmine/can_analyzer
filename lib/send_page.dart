@@ -1,10 +1,10 @@
 import 'dart:async';
 
 import 'stream_list_builder.dart';
-import 'usbcan.dart';
+import 'package:usbcan_plugins/usbcan.dart';
 import 'package:flutter/material.dart';
 
-import 'widgets.dart';
+import 'package:usbcan_plugins/widgets.dart';
 
 class SendPage extends StatefulWidget {
   const SendPage({super.key, required this.usbCan});

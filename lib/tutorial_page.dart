@@ -7,7 +7,7 @@ class TutorialPage extends StatelessWidget {
       TextStyle(fontSize: 20, overflow: TextOverflow.ellipsis);
   @override
   Widget build(BuildContext context) {
-    return Column(mainAxisAlignment: MainAxisAlignment.center, children: const [
+    return const Column(mainAxisAlignment: MainAxisAlignment.center, children: [
       Spacer(),
       Text("Hello!!", style: TextStyle(fontSize: 30)),
       Spacer(),

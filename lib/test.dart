@@ -3,8 +3,8 @@ import 'dart:typed_data';
 
 import 'package:can_analyzer/stream_list_builder.dart';
 import 'package:flutter/material.dart';
-import 'usbcan.dart';
-import 'widgets.dart';
+import 'package:usbcan_plugins/usbcan.dart';
+import 'package:usbcan_plugins/widgets.dart';
 
 class TestPage extends StatefulWidget {
   const TestPage({super.key, required this.title});

@@ -1,8 +1,8 @@
 import 'package:can_analyzer/stream_list_builder.dart';
-import 'package:can_analyzer/widgets.dart';
+import 'package:usbcan_plugins/widgets.dart';
 import 'package:flutter/material.dart';
 
-import 'usbcan.dart';
+import 'package:usbcan_plugins/usbcan.dart';
 
 class RecievePage extends StatefulWidget {
   const RecievePage({super.key, required this.usbCan});
@@ -43,9 +43,8 @@ class _RecievePageState extends State<RecievePage> {
                         ))
                     .toList(),
                 onSelected: (value) {
-                  setState(() {
-                    mode = value as CanWidgetMode;
-                  });
+                  mode = value as CanWidgetMode;
+                  setState(() {});
                 },
               ),
               const Text("delete same id frames"),

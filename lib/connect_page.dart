@@ -2,10 +2,10 @@ import 'dart:convert';
 import 'dart:typed_data';
 
 import 'package:flutter/material.dart';
-import 'serial.dart';
+import 'package:usbcan_plugins/serial.dart';
 
 import 'stream_list_builder.dart';
-import 'usbcan.dart';
+import 'package:usbcan_plugins/usbcan.dart';
 
 class ConnectPage extends StatefulWidget {
   const ConnectPage({super.key, required this.usbCan});
