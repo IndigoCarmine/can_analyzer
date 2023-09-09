@@ -57,7 +57,9 @@ class _ConnectPageState extends State<ConnectPage> {
                     const snackBar = SnackBar(
                         content:
                             Text("Hello! This is newest version of USBCAN!!"));
-                    ScaffoldMessenger.of(context).showSnackBar(snackBar);
+                    if (mounted) {
+                      ScaffoldMessenger.of(context).showSnackBar(snackBar);
+                    }
                     return;
                   }
                   await Future.delayed(const Duration(seconds: 1));
